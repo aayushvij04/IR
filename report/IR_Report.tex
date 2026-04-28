@@ -113,87 +113,45 @@
 \section{Information Retrieval — Foundations}
 % ─────────────────────────────────────────────────────────────────────────
 
-\textbf{Information Retrieval (IR)} is the science of finding material—usually
-documents—relevant to an information need from within large collections. Unlike
-database retrieval, which demands exact, structured queries, IR operates on
-unstructured or semi-structured text and must cope with ambiguity, redundancy,
-and the absence of a universal relevance definition.
-
-\subsection{Core Components}
-
-A classical IR system consists of three pillars:
-\begin{enumerate}[leftmargin=*, label=\arabic*.]
-  \item \textbf{Corpus and Documents.} A collection of textual units (web pages,
-        research articles, product descriptions) over which retrieval is performed.
-  \item \textbf{Query Processing.} Translating a user's information need into a
-        machine-processable form—Boolean expressions, vectors, or probability
-        distributions.
-  \item \textbf{Ranking \& Retrieval Model.} A mathematical model that assigns a
-        relevance score to each document with respect to a query.
+\textbf{Information Retrieval (IR)} is the science of finding documents relevant to an information need from large collections. Unlike database retrieval, IR operates on unstructured text and copes with ambiguity and redundancy. A classical IR system has three pillars:
+\begin{enumerate}[leftmargin=*, label=\arabic*., nosep]
+  \item \textbf{Corpus and Documents.} A collection of textual units over which retrieval is performed.
+  \item \textbf{Query Processing.} Translating an information need into Boolean expressions, vectors, or probabilities.
+  \item \textbf{Ranking Model.} A mathematical model that assigns a relevance score to each document.
 \end{enumerate}
 
 \subsection{The Inverted Index}
-
-The \emph{inverted index} is the foundational data structure of IR. For every
-term $t$ in the vocabulary, it stores a \emph{postings list}—a sorted list of
-document identifiers (and optionally positions) in which $t$ occurs.
-
+The \emph{inverted index} is the foundational data structure. For every vocabulary term $t$, it stores a \emph{postings list}—a sorted list of document IDs:
+\vspace{-0.5em}
 \begin{equation}
-  \text{Index}: t \;\longrightarrow\; \langle df_t,\;[d_1, d_2, \ldots, d_{df_t}] \rangle
+  \text{Index}: t \longrightarrow \langle df_t,\;[d_1, d_2, \ldots, d_{df_t}] \rangle
 \end{equation}
+\vspace{-0.5em}
 
-Boolean AND queries are answered in $O(|p_1| + |p_2|)$ via a linear merge of
-two sorted postings lists, accelerated with \emph{skip pointers} at every
-$\lfloor\sqrt{n}\rfloor$ positions.
-
-Construction at scale uses \textbf{BSBI} (Block Sort-Based Indexing) or
-\textbf{SPIMI} (Single-Pass In-Memory Indexing). Postings are gap-encoded and
-compressed with Variable-Byte Encoding or Gamma codes to reduce disk footprint,
-motivated by Zipf's Law (a small vocabulary subset covers most token occurrences)
-and Heaps' Law ($M \approx k\,n^b$, vocabulary grows sub-linearly with corpus size).
+Boolean AND queries are answered in $O(|p_1| + |p_2|)$ via a linear merge of sorted lists, accelerated with \emph{skip pointers} every $\lfloor\sqrt{n}\rfloor$ positions. Construction at scale uses \textbf{BSBI} (Block Sort-Based Indexing) or \textbf{SPIMI} (Single-Pass In-Memory Indexing). Postings are compressed with Variable-Byte or Gamma encoding to reduce footprint, motivated by Zipf's Law and Heaps' Law ($M \approx k\,n^b$).
 
 \subsection{Ranking Models}
 
-\paragraph{Vector Space Model (VSM).}
-Documents and queries are represented as TF-IDF weighted vectors in
-$\mathbb{R}^{|V|}$. Relevance is the \emph{cosine similarity}:
-
+\textbf{Vector Space Model (VSM).} Documents and queries are TF-IDF weighted vectors in $\mathbb{R}^{|V|}$. Relevance is the \emph{cosine similarity}:
+\vspace{-0.5em}
 \begin{equation}
-  \text{sim}(q, d) = \frac{\vec{q} \cdot \vec{d}}{|\vec{q}|\;|\vec{d}|}
-  \qquad
-  \text{where}\quad
-  w_{t,d} = \bigl(1 + \log \text{tf}_{t,d}\bigr)\cdot\log\frac{N}{df_t}
+  \text{sim}(q, d) = \frac{\vec{q} \cdot \vec{d}}{|\vec{q}|\;|\vec{d}|} \qquad \text{where}\quad w_{t,d} = \bigl(1 + \log \text{tf}_{t,d}\bigr)\cdot\log\frac{N}{df_t}
 \end{equation}
+\vspace{-0.5em}
 
-\paragraph{BM25 (Okapi).}
-The probabilistic ranking function that dominates modern search engines:
-
+\textbf{BM25 (Okapi).} The probabilistic ranking function dominating modern search engines:
+\vspace{-0.5em}
 \begin{equation}
-  \text{BM25}(q,d)
-  = \sum_{t\in q} \text{IDF}(t) \cdot
-    \frac{f_{t,d}(k_1+1)}{f_{t,d}+k_1\!\left(1-b+b\tfrac{|d|}{\text{avgdl}}\right)}
+  \text{BM25}(q,d) = \sum_{t\in q} \text{IDF}(t) \cdot \frac{f_{t,d}(k_1+1)}{f_{t,d}+k_1(1-b+b\frac{|d|}{\text{avgdl}})}
 \end{equation}
+\vspace{-0.5em}
 
-Typical parameters: $k_1 \in [1.2, 2.0]$, $b = 0.75$.
-Extensions include \textbf{BM25F} (field-weighted) and \textbf{BM25+}
-(lower-bound on TF saturation via additive $\delta$).
+Typical parameters are $k_1 \in [1.2, 2.0]$ and $b = 0.75$. Extensions include \textbf{BM25F} (field-weighted) and \textbf{BM25+} (lower-bound on TF saturation).
 
-\paragraph{Language Models (LM).}
-Query likelihood: $P(q\mid d) = \prod_{t\in q} P(t\mid d)$.
-The zero-frequency problem is solved with smoothing:
-\begin{itemize}
-  \item \emph{Jelinek-Mercer}: $P_\lambda(t\mid d) = \lambda\,P(t\mid d)_\text{MLE} + (1-\lambda)\,P(t\mid C)$
-  \item \emph{Dirichlet}: $P_\mu(t\mid d) = \frac{f_{t,d}+\mu\,P(t\mid C)}{|d|+\mu}$
-\end{itemize}
+\textbf{Language Models (LM).} Query likelihood is $P(q\mid d) = \prod_{t\in q} P(t\mid d)$. The zero-frequency problem is solved with smoothing methods such as \emph{Jelinek-Mercer}: $P_\lambda(t\mid d) = \lambda P(t\mid d)_\text{MLE} + (1-\lambda)P(t\mid C)$, or \emph{Dirichlet}: $P_\mu(t\mid d) = \frac{f_{t,d}+\mu P(t\mid C)}{|d|+\mu}$.
 
 \subsection{Evaluation}
-
-Standard retrieval quality is measured by \textbf{MAP} (Mean Average Precision),
-\textbf{nDCG@K} (Normalized Discounted Cumulative Gain for graded relevance),
-and \textbf{MRR} (Mean Reciprocal Rank). Large-scale evaluation follows the
-\textbf{TREC} paradigm, using pooled relevance judgements and the
-\texttt{trec\_eval} toolkit. Inter-annotator agreement is quantified by
-Cohen's~$\kappa$.
+Retrieval quality is measured by \textbf{MAP} (Mean Average Precision), \textbf{nDCG@K} (Normalized Discounted Cumulative Gain), and \textbf{MRR} (Mean Reciprocal Rank). Evaluation often follows the \textbf{TREC} paradigm using pooled judgements and \texttt{trec\_eval}. Inter-annotator agreement is quantified by Cohen's $\kappa$.
 
 % ─────────────────────────────────────────────────────────────────────────
 \newpage
