@@ -1,0 +1,504 @@
+\documentclass[11pt,a4paper]{article}
+% Fix listings UTF-8 compatibility
+\usepackage{textcomp}
+
+% ── Packages ──────────────────────────────────────────────────────────────
+\usepackage[margin=1in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{microtype}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{parskip}
+\usepackage{fancyhdr}
+\usepackage{setspace}
+
+% ── Colours ───────────────────────────────────────────────────────────────
+\definecolor{codebg}{RGB}{245,247,250}
+\definecolor{keyblue}{RGB}{0,90,180}
+\definecolor{commentgray}{RGB}{100,110,120}
+\definecolor{stringgreen}{RGB}{0,130,60}
+\definecolor{accent}{RGB}{30,80,160}
+
+% ── Hyperlinks ────────────────────────────────────────────────────────────
+\hypersetup{
+  colorlinks=true,
+  linkcolor=accent,
+  urlcolor=accent,
+  citecolor=accent
+}
+
+% ── Code listings style ───────────────────────────────────────────────────
+\lstdefinestyle{pylucene}{
+  language=Python,
+  backgroundcolor=\color{codebg},
+  basicstyle=\ttfamily\footnotesize,
+  keywordstyle=\color{keyblue}\bfseries,
+  commentstyle=\color{commentgray}\itshape,
+  stringstyle=\color{stringgreen},
+  numberstyle=\tiny\color{commentgray},
+  numbers=left,
+  stepnumber=1,
+  numbersep=6pt,
+  frame=single,
+  framerule=0.4pt,
+  rulecolor=\color{gray!40},
+  breaklines=true,
+  breakatwhitespace=true,
+  showstringspaces=false,
+  tabsize=4,
+  captionpos=b,
+  xleftmargin=12pt,
+  xrightmargin=4pt,
+  aboveskip=8pt,
+  belowskip=8pt,
+}
+\lstset{style=pylucene}
+
+% ── Section formatting ────────────────────────────────────────────────────
+\titleformat{\section}{\large\bfseries\color{accent}}{}{0em}{}[\titlerule]
+\titleformat{\subsection}{\normalsize\bfseries\color{accent!80}}{}{0em}{}
+\titlespacing{\section}{0pt}{14pt}{6pt}
+\titlespacing{\subsection}{0pt}{10pt}{4pt}
+
+% ── Header / Footer ───────────────────────────────────────────────────────
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{\small Information Retrieval with PyLucene}
+\lhead{\small \today}
+\cfoot{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% ─────────────────────────────────────────────────────────────────────────
+\begin{document}
+
+% ── Title Page ────────────────────────────────────────────────────────────
+\begin{titlepage}
+  \centering
+  \vspace*{2.5cm}
+  {\Huge\bfseries\color{accent} Information Retrieval \\ with PyLucene \par}
+  \vspace{0.6cm}
+  \rule{0.6\linewidth}{1.2pt}
+  \vspace{0.5cm}
+
+  {\large A Comprehensive Technical Report \par}
+  \vspace{0.4cm}
+  {\normalsize Covering IR Foundations, Ranking Models, and\\
+               PyLucene Indexing \& Retrieval in Depth\par}
+
+  \vspace{2cm}
+  {\large Aayush Vij \par}
+  \vspace{0.2cm}
+  {\normalsize \today \par}
+
+  \vspace{2cm}
+  \begin{tabular}{ll}
+    \textbf{Repository} &
+    \href{https://github.com/aayushvij04/IR}{\texttt{github.com/aayushvij04/IR}} \\
+    \textbf{Course}     & Information Retrieval \\
+  \end{tabular}
+
+  \vfill
+  \small\textit{Source code and this report are available in the linked repository.}
+\end{titlepage}
+
+% ─────────────────────────────────────────────────────────────────────────
+\section{Information Retrieval — Foundations}
+% ─────────────────────────────────────────────────────────────────────────
+
+\textbf{Information Retrieval (IR)} is the science of finding material—usually
+documents—relevant to an information need from within large collections. Unlike
+database retrieval, which demands exact, structured queries, IR operates on
+unstructured or semi-structured text and must cope with ambiguity, redundancy,
+and the absence of a universal relevance definition.
+
+\subsection{Core Components}
+
+A classical IR system consists of three pillars:
+\begin{enumerate}[leftmargin=*, label=\arabic*.]
+  \item \textbf{Corpus and Documents.} A collection of textual units (web pages,
+        research articles, product descriptions) over which retrieval is performed.
+  \item \textbf{Query Processing.} Translating a user's information need into a
+        machine-processable form—Boolean expressions, vectors, or probability
+        distributions.
+  \item \textbf{Ranking \& Retrieval Model.} A mathematical model that assigns a
+        relevance score to each document with respect to a query.
+\end{enumerate}
+
+\subsection{The Inverted Index}
+
+The \emph{inverted index} is the foundational data structure of IR. For every
+term $t$ in the vocabulary, it stores a \emph{postings list}—a sorted list of
+document identifiers (and optionally positions) in which $t$ occurs.
+
+\begin{equation}
+  \text{Index}: t \;\longrightarrow\; \langle df_t,\;[d_1, d_2, \ldots, d_{df_t}] \rangle
+\end{equation}
+
+Boolean AND queries are answered in $O(|p_1| + |p_2|)$ via a linear merge of
+two sorted postings lists, accelerated with \emph{skip pointers} at every
+$\lfloor\sqrt{n}\rfloor$ positions.
+
+Construction at scale uses \textbf{BSBI} (Block Sort-Based Indexing) or
+\textbf{SPIMI} (Single-Pass In-Memory Indexing). Postings are gap-encoded and
+compressed with Variable-Byte Encoding or Gamma codes to reduce disk footprint,
+motivated by Zipf's Law (a small vocabulary subset covers most token occurrences)
+and Heaps' Law ($M \approx k\,n^b$, vocabulary grows sub-linearly with corpus size).
+
+\subsection{Ranking Models}
+
+\paragraph{Vector Space Model (VSM).}
+Documents and queries are represented as TF-IDF weighted vectors in
+$\mathbb{R}^{|V|}$. Relevance is the \emph{cosine similarity}:
+
+\begin{equation}
+  \text{sim}(q, d) = \frac{\vec{q} \cdot \vec{d}}{|\vec{q}|\;|\vec{d}|}
+  \qquad
+  \text{where}\quad
+  w_{t,d} = \bigl(1 + \log \text{tf}_{t,d}\bigr)\cdot\log\frac{N}{df_t}
+\end{equation}
+
+\paragraph{BM25 (Okapi).}
+The probabilistic ranking function that dominates modern search engines:
+
+\begin{equation}
+  \text{BM25}(q,d)
+  = \sum_{t\in q} \text{IDF}(t) \cdot
+    \frac{f_{t,d}(k_1+1)}{f_{t,d}+k_1\!\left(1-b+b\tfrac{|d|}{\text{avgdl}}\right)}
+\end{equation}
+
+Typical parameters: $k_1 \in [1.2, 2.0]$, $b = 0.75$.
+Extensions include \textbf{BM25F} (field-weighted) and \textbf{BM25+}
+(lower-bound on TF saturation via additive $\delta$).
+
+\paragraph{Language Models (LM).}
+Query likelihood: $P(q\mid d) = \prod_{t\in q} P(t\mid d)$.
+The zero-frequency problem is solved with smoothing:
+\begin{itemize}
+  \item \emph{Jelinek-Mercer}: $P_\lambda(t\mid d) = \lambda\,P(t\mid d)_\text{MLE} + (1-\lambda)\,P(t\mid C)$
+  \item \emph{Dirichlet}: $P_\mu(t\mid d) = \frac{f_{t,d}+\mu\,P(t\mid C)}{|d|+\mu}$
+\end{itemize}
+
+\subsection{Evaluation}
+
+Standard retrieval quality is measured by \textbf{MAP} (Mean Average Precision),
+\textbf{nDCG@K} (Normalized Discounted Cumulative Gain for graded relevance),
+and \textbf{MRR} (Mean Reciprocal Rank). Large-scale evaluation follows the
+\textbf{TREC} paradigm, using pooled relevance judgements and the
+\texttt{trec\_eval} toolkit. Inter-annotator agreement is quantified by
+Cohen's~$\kappa$.
+
+% ─────────────────────────────────────────────────────────────────────────
+\newpage
+\section{PyLucene — Architecture and Setup}
+% ─────────────────────────────────────────────────────────────────────────
+
+\textbf{Apache Lucene} is a high-performance, open-source full-text search
+library written in Java. \textbf{PyLucene} exposes the full Lucene API to Python
+via JCC, a C++ code generator that bridges the JVM and CPython runtimes.
+This means every Java class in Lucene 9.x is directly accessible as a Python
+class—with identical semantics and performance.
+
+\subsection{Initializing the JVM}
+
+Every PyLucene session must start the Java Virtual Machine exactly once:
+
+\begin{lstlisting}[caption={JVM initialization}]
+import lucene
+lucene.initVM(vmargs=['-Djava.awt.headless=true'])
+\end{lstlisting}
+
+\subsection{Storage Backends}
+
+\begin{lstlisting}[caption={On-disk vs in-memory index}]
+from org.apache.lucene.store import FSDirectory, ByteBuffersDirectory
+from java.nio.file import Paths
+
+# Persistent on-disk index
+directory = FSDirectory.open(Paths.get("/path/to/index"))
+
+# Ephemeral in-memory index (testing / unit tests)
+directory = ByteBuffersDirectory()
+\end{lstlisting}
+
+% ─────────────────────────────────────────────────────────────────────────
+\section{Indexing with PyLucene}
+% ─────────────────────────────────────────────────────────────────────────
+
+\subsection{IndexWriter and Analyzers}
+
+\begin{lstlisting}[caption={Creating an IndexWriter with StandardAnalyzer}]
+from org.apache.lucene.analysis.standard import StandardAnalyzer
+from org.apache.lucene.index import IndexWriter, IndexWriterConfig
+
+analyzer = StandardAnalyzer()          # lowercase + stop-word removal
+config   = IndexWriterConfig(analyzer)
+config.setOpenMode(IndexWriterConfig.OpenMode.CREATE)
+writer   = IndexWriter(directory, config)
+\end{lstlisting}
+
+Available analyzers and their behaviours are summarized in Table~\ref{tab:analyzers}.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Analyzer} & \textbf{Tokenization} & \textbf{Typical Use} \\
+\midrule
+\texttt{StandardAnalyzer}   & Unicode tokenizer + lowercase + stop words & General English text \\
+\texttt{WhitespaceAnalyzer} & Split on whitespace, preserves case         & Code, identifiers    \\
+\texttt{KeywordAnalyzer}    & Entire field = one token                    & IDs, enums, genres   \\
+\texttt{EnglishAnalyzer}    & StandardAnalyzer + Porter stemming          & IR experiments       \\
+\texttt{CJKAnalyzer}        & Bi-gram tokenization                        & Chinese/Japanese/Korean \\
+\bottomrule
+\end{tabular}
+\caption{PyLucene Analyzer options}
+\label{tab:analyzers}
+\end{table}
+
+\subsection{Document and Field Types}
+
+A Lucene \texttt{Document} is a flat set of \texttt{Field} objects.
+Field type controls \emph{whether} and \emph{how} a value is indexed:
+
+\begin{lstlisting}[caption={Field types in a movie document (from \texttt{src/pylucene/indexing.py})}]
+from org.apache.lucene.document import (
+    Document, TextField, StringField,
+    StoredField, IntPoint, FloatPoint, Field)
+
+def movie_to_document(movie: dict) -> Document:
+    doc = Document()
+    # Analyzed full-text - tokenized, lowercased, stop-word removed
+    doc.add(TextField("title", movie["title"], Field.Store.YES))
+    doc.add(TextField("plot",  movie["plot"],  Field.Store.YES))
+    # Exact keyword - single token, not analyzed
+    doc.add(StringField("genre", movie["genre"], Field.Store.YES))
+    # Stored only - retrieve at search time, not searchable
+    doc.add(StoredField("year_display", str(movie["year"])))
+    # Numeric range-queryable fields
+    doc.add(IntPoint  ("year",   movie["year"]))
+    doc.add(FloatPoint("rating", movie["rating"]))
+    doc.add(StoredField("year",   movie["year"]))
+    doc.add(StoredField("rating", movie["rating"]))
+    return doc
+\end{lstlisting}
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{Field Type} & \textbf{Indexed} & \textbf{Analyzed} & \textbf{Stored} \\
+\midrule
+\texttt{TextField}   & Yes & Yes & Optional \\
+\texttt{StringField} & Yes & No  & Optional \\
+\texttt{StoredField} & No  & No  & Yes      \\
+\texttt{IntPoint}    & Yes (BKD tree) & No & No \\
+\texttt{FloatPoint}  & Yes (BKD tree) & No & No \\
+\bottomrule
+\end{tabular}
+\caption{Lucene field type comparison}
+\label{tab:fields}
+\end{table}
+
+% ─────────────────────────────────────────────────────────────────────────
+\section{Retrieval with PyLucene}
+% ─────────────────────────────────────────────────────────────────────────
+
+\subsection{IndexSearcher and Similarity}
+
+\begin{lstlisting}[caption={Setting up IndexSearcher with BM25 (from \texttt{src/pylucene/retrieval.py})}]
+from org.apache.lucene.index  import DirectoryReader
+from org.apache.lucene.search import IndexSearcher
+from org.apache.lucene.search.similarities import BM25Similarity
+
+reader   = DirectoryReader.open(directory)
+searcher = IndexSearcher(reader)
+searcher.setSimilarity(BM25Similarity(1.2, 0.75))  # k1=1.2, b=0.75
+
+from org.apache.lucene.queryparser.classic import QueryParser
+parser   = QueryParser("plot", analyzer)
+query    = parser.parse("space travel wormhole")
+top_docs = searcher.search(query, 5)           # top-5 results
+
+for hit in top_docs.scoreDocs:
+    doc = searcher.doc(hit.doc)
+    print(f"Score={hit.score:.4f}  |  {doc.get('title')}")
+reader.close()
+\end{lstlisting}
+
+\subsection{Explaining Scores}
+
+\texttt{IndexSearcher.explain()} returns a human-readable breakdown of how each
+relevance score was computed—invaluable for debugging:
+
+\begin{lstlisting}[caption={Score explanation}]
+hit         = top_docs.scoreDocs[0]
+explanation = searcher.explain(query, hit.doc)
+print(explanation.toString())
+# Output includes: IDF, TF, field norm, BM25 saturation factor...
+\end{lstlisting}
+
+% ─────────────────────────────────────────────────────────────────────────
+\section{PyLucene Query Classes}
+% ─────────────────────────────────────────────────────────────────────────
+
+PyLucene provides a rich query API. All examples below are drawn from
+\texttt{src/pylucene/query\_classes.py} in the repository.
+
+\subsection{TermQuery}
+
+Matches documents containing an \emph{exact} post-analysis term:
+
+\begin{lstlisting}[caption={TermQuery -- exact single-term match}]
+from org.apache.lucene.search import TermQuery
+from org.apache.lucene.index  import Term
+
+query = TermQuery(Term("plot", "crime"))
+top_docs = searcher.search(query, 5)
+\end{lstlisting}
+
+\subsection{PhraseQuery}
+
+Ordered phrase match with optional \texttt{slop} for proximity search:
+
+\begin{lstlisting}[caption={PhraseQuery -- exact phrase and proximity}]
+from org.apache.lucene.search import PhraseQuery
+
+# Exact phrase
+exact = (PhraseQuery.Builder()
+         .add(Term("plot", "corporate"))
+         .add(Term("plot", "secrets"))
+         .build())
+
+# Proximity: terms within 3 positions of each other
+prox = (PhraseQuery.Builder()
+        .add(Term("plot", "crime"))
+        .add(Term("plot", "redemption"))
+        .setSlop(3).build())
+\end{lstlisting}
+
+\subsection{BooleanQuery}
+
+Combine sub-queries with \texttt{MUST} (AND), \texttt{SHOULD} (OR),
+\texttt{MUST\_NOT} (NOT):
+
+\begin{lstlisting}[caption={BooleanQuery -- combining clauses (MUST/SHOULD/MUST NOT)}]
+from org.apache.lucene.search import BooleanQuery, BooleanClause
+
+builder = BooleanQuery.Builder()
+builder.add(TermQuery(Term("plot",  "crime")),
+            BooleanClause.Occur.SHOULD)
+builder.add(TermQuery(Term("plot",  "redemption")),
+            BooleanClause.Occur.SHOULD)
+builder.add(TermQuery(Term("genre", "action")),
+            BooleanClause.Occur.MUST_NOT)
+query = builder.build()
+\end{lstlisting}
+
+\subsection{Numeric Range Queries}
+
+\begin{lstlisting}[caption={IntPoint and FloatPoint -- numeric range queries}]
+from org.apache.lucene.document import IntPoint, FloatPoint
+from java.lang import Float
+
+# Movies from 1990 to 2000
+year_q   = IntPoint.newRangeQuery("year", 1990, 2000)
+
+# Movies with rating >= 9.0
+rating_q = FloatPoint.newRangeQuery("rating", 9.0, Float.MAX_VALUE)
+\end{lstlisting}
+
+\subsection{WildcardQuery and FuzzyQuery}
+
+\begin{lstlisting}[caption={WildcardQuery and FuzzyQuery -- approximate matching}]
+from org.apache.lucene.search import WildcardQuery, FuzzyQuery
+
+# ? = any single char, * = zero or more chars
+wild  = WildcardQuery(Term("plot", "r?dempt*"))
+
+# Levenshtein distance <= 2 (handles typos)
+fuzzy = FuzzyQuery(Term("plot", "astronawts"), 2)
+\end{lstlisting}
+
+\subsection{PrefixQuery and TermRangeQuery}
+
+\begin{lstlisting}[caption={PrefixQuery and TermRangeQuery}]
+from org.apache.lucene.search import PrefixQuery, TermRangeQuery
+
+prefix = PrefixQuery(Term("plot", "inter"))           # plot:inter*
+trange = TermRangeQuery.newStringRange(
+             "genre", "crime", "drama", True, True)   # inclusive
+\end{lstlisting}
+
+\subsection{MatchAllDocsQuery and BoostQuery}
+
+\begin{lstlisting}[caption={MatchAllDocsQuery and BoostQuery}]
+from org.apache.lucene.search import MatchAllDocsQuery, BoostQuery
+
+all_q   = MatchAllDocsQuery()                        # returns every doc
+
+title_q = TermQuery(Term("title", "redemption"))
+boosted = BoostQuery(title_q, 3.0)                   # title match = 3x score
+\end{lstlisting}
+
+% ─────────────────────────────────────────────────────────────────────────
+\section{Repository Overview}
+% ─────────────────────────────────────────────────────────────────────────
+
+The full source code is available at:
+\begin{center}
+  \href{https://github.com/aayushvij04/IR}{\texttt{https://github.com/aayushvij04/IR}}
+\end{center}
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{File} & \textbf{Contents} \\
+\midrule
+\texttt{src/pylucene/indexing.py}     & IndexWriter, Document, Field types, Analyzer choices \\
+\texttt{src/pylucene/retrieval.py}    & IndexSearcher, BM25/TF-IDF, multi-field, score explain \\
+\texttt{src/pylucene/query\_classes.py} & All query types with runnable demos \\
+\texttt{src/boolean\_retrieval.py}    & Inverted index, Boolean ops, skip pointers (pure Python) \\
+\texttt{src/ranking\_models.py}       & TF-IDF, VSM, BM25, BM25+ (pure Python) \\
+\texttt{src/language\_models.py}      & Unigram LM, JM \& Dirichlet smoothing, KLD \\
+\texttt{src/evaluation.py}            & P, R, AP, MAP, nDCG, MRR, Kappa \\
+\texttt{src/web\_search.py}           & PageRank, HITS, Shingling \\
+\texttt{src/advanced\_ir.py}          & LSI, co-occurrence embeddings, Rocchio \\
+\texttt{report/IR\_Report.tex}        & This report (LaTeX source) \\
+\bottomrule
+\end{tabular}
+\caption{Repository file index}
+\end{table}
+
+% ─────────────────────────────────────────────────────────────────────────
+\section{Conclusion}
+% ─────────────────────────────────────────────────────────────────────────
+
+PyLucene brings the full power of Apache Lucene to the Python ecosystem without
+sacrificing performance. Its rich field model, analyzer pipeline, and query API
+make it suitable for both research prototyping and production search systems.
+The integration of BM25 as the default similarity function—combined with
+flexible numeric indexing, proximity queries, and fuzzy matching—makes PyLucene
+one of the most complete IR toolkits available.
+
+The accompanying code in this repository demonstrates each concept with
+runnable, well-commented examples, bridging the gap between IR theory and
+practical implementation.
+
+\vspace{1em}
+\begin{center}
+  \small\textit{Source: \href{https://github.com/aayushvij04/IR}{github.com/aayushvij04/IR}}
+\end{center}
+
+\end{document}
