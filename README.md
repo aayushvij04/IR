@@ -2,7 +2,7 @@
 
 A comprehensive repository on **Information Retrieval (IR)** — covering core IR algorithms from scratch and practical **PyLucene** integration for real-world search systems.
 
-📄 **[Full Report (PDF)](report/IR_Report.pdf)** — A detailed 4–5 page report on IR fundamentals and PyLucene.
+📄 **[Full Report (PDF)](report/IR_Report_Aayush_Vandan.pdf)** — A detailed 4–5 page report on IR fundamentals and PyLucene.
 
 ---
 
@@ -23,8 +23,8 @@ IR/
 │       ├── retrieval.py          # PyLucene search & scoring
 │       └── query_classes.py      # TermQuery, PhraseQuery, BooleanQuery, FuzzyQuery…
 └── report/
-    ├── IR_Report.tex             # LaTeX source
-    └── IR_Report.pdf             # Compiled report
+    ├── IR_Report.tex                 # LaTeX source
+    └── IR_Report_Aayush_Vandan.pdf   # Compiled report
 ```
 
 ---
