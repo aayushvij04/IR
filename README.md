@@ -46,6 +46,7 @@ python src/evaluation.py
 
 # PyLucene (requires PyLucene installed)
 python src/pylucene/indexing.py
+python src/pylucene/retrieval.py
 python src/pylucene/query_classes.py
 ```
 
